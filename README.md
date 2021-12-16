@@ -47,4 +47,4 @@ Giờ ta đã có hai người dùng là admin và appUser trong ứng dụng.
 
 ## Sử dụng các chức năng:
 
-Xem file instructions.txt để biết các tương tác với server
+Xem file server/instructions.txt để biết cách tương tác với server
