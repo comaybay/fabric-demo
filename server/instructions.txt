@@ -1,15 +1,3 @@
---Tắt network:
-./network.sh down
-
-Bật network và tạo kênh với là "mychannel"
-./network.sh up createChannel -c mychannel -ca
-
---Xem network:
-docker ps -a | less -S
-
---Deploy chaincode
-./network.sh deployCC -ccn basic -ccp ../chaincode/ -ccl javascript
-
 --Khởi tạo asset mẫu:
 curl http://localhost:1234/api/init; echo
 
