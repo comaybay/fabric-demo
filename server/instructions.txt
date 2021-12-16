@@ -1,0 +1,52 @@
+--Tắt network:
+./network.sh down
+
+Bật network và tạo kênh với là "mychannel"
+./network.sh up createChannel -c mychannel -ca
+
+--Xem network:
+docker ps -a | less -S
+
+--Deploy chaincode
+./network.sh deployCC -ccn basic -ccp ../chaincode/ -ccl javascript
+
+--Khởi tạo asset mẫu:
+curl http://localhost:1234/api/init; echo
+
+--Xem asset dựa trên ID:
+curl http://localhost:1234/api/read/asset1; echo
+
+--Xem tất cả  asset:
+curl http://localhost:1234/api/all; echo
+
+--Thêm asset
+\
+curl -X POST -H "Content-Type: application/json" \
+--data '{ "ID": "asset7", "Owner": "Tomoky", "Tên": "Đàn Piano", "Màu": "đỏ", "Giá": "3000000 vnđ"}' \
+http://localhost:1234/api/create; echo
+
+--Sửa asset
+\
+curl -X POST -H "Content-Type: application/json" \
+--data '{ "ID": "asset7", "Owner": "Tomoky", "Tên": "Đàn Piano", "Màu": "xanh", "Giá": "5500000 vnđ"}' \
+http://localhost:1234/api/update; echo
+
+--Xóa asset
+\
+curl -X POST -H "Content-Type: application/json" \
+--data '{ "ID": "asset7" }' \
+http://localhost:1234/api/delete; echo
+
+--Goi transaction mong muon
+\
+curl -X POST -H "Content-Type: application/json" \
+--data '{ "user": {"org": "org2", "ID": "appUserOrg2" },
+          "transaction": { 
+            "channelName": "mychannel",
+            "chaincodeName": "basic", 
+            "contractName": "AssetTransferContract",
+            "transactionName": "CreateAsset", 
+            "args": [{"Owner": "Kris", "Name": "Knife", "Price": "999"}] 
+          } 
+        }' \
+http://localhost:1234/api/call; echo
