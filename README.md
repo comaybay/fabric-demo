@@ -6,6 +6,8 @@ tắt network nếu đang mở:
 
 `./network.sh down`
 
+chạy:
+
 `./network.sh up createChannel -c mychannel -ca`
 
 Network chứa 2 node thành viên (Org1, Org2) đại diện cho hai tổ chức khác nhau, có nhiệm vụ xác nhận giao dịch và tạo giao dịch. Network còn có một Orderer là node có công việc đồng thuận về thứ tự của các giao dịch trong mạng lưới và đặt các giao dịch vào block.
