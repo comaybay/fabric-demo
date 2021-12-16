@@ -21,7 +21,7 @@ Xây dựng ứng dụng tương tác với chaincode đã được triển khai
 
 Đi tới thư mục của ứng dụng:
 
-`cd application`
+`cd ../server`
 
 Cài các dependencies:
 
