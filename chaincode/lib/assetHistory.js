@@ -14,41 +14,31 @@ class AssetHistory extends Contract {
         let result = [];
         let res = await iterator.next();
         while (!res.done) {
-          if (res.value) {
-              const obj = JSON.parse(res.value.value.toString('utf8'));
-              const timestamp  = res.value.timestamp;
-            result.push({
-                transaction: {
-                    txId: res.value.txId,
-                    timestamp: (timestamp.seconds.low + ((timestamp.nanos / 1000000) / 1000)) * 1000,
-                    isDelete: res.value.isDelete.toString(),
-                },
-                value: obj
-            });
-          }
-          res = await iterator.next();
+            if (res.value) {
+                const obj = JSON.parse(res.value.value.toString('utf8'));
+
+                const key = ctx.stub.createCompositeKey("string", ["tx", res.value.txId]);
+                let transaction = JSON.parse(await ctx.stub.getState(key));
+
+                result.push({
+                    transaction: transaction,
+                    value: obj
+                });
+            }
+            res = await iterator.next();
         }
         await iterator.close();
-        return JSON.stringify(result);  
+        return JSON.stringify(result);
     }
 
-    async GetAllAssets(ctx) {
-        const allResults = [];
-        const iterator = await ctx.stub.getStateByRange('', '');
-        let result = await iterator.next();
-        while (!result.done) {
-            const strValue = Buffer.from(result.value.value.toString()).toString('utf8');
-            let record;
-            try {
-                record = JSON.parse(strValue);
-            } catch (err) {
-                console.log(err);
-                record = strValue;
-            }
-            allResults.push(record);
-            result = await iterator.next();
-        }
-        return JSON.stringify(allResults);
+    async GetTransactionInfoByTxId(ctx, txId) {
+        const key = ctx.stub.createCompositeKey("string", ["tx", txId]);
+        const transaction = await ctx.stub.getState(key);
+
+        if (transaction && transaction.length > 0)
+            return transaction.toString();
+        else
+            throw new Error(`The transaction id '${id}' does not exist`);
     }
 }
 

@@ -15,7 +15,7 @@ const { buildCAClient, registerAndEnrollUser, enrollAdmin } = require('./CAUtil.
 const { buildCCPOrg1, buildCCPOrg2, buildWallet } = require('./AppUtil.js');
 
 const channelName = 'mychannel';
-const chaincodeName = 'basic8';
+const chaincodeName = 'basic16';
 const contractName = "AssetTransferContract";
 
 const mspOrg1 = 'Org1MSP';
@@ -167,9 +167,14 @@ init().then(() => {
       // Giao dich se duoc dua den cho orderer de dua vao so cai cua kenh  
       console.log('\n--> Submit Transaction: CreateAsset');
 
-      if (!req.body.Owner) {
+      if (!req.body.owner) {
         logResultFailed();
-        return res.status(404).send(`That bai: asset bat buoc phai co Owner`);
+        return res.status(404).send(`That bai: asset bat buoc phai co owner`);
+      }
+
+      if (!req.body.name) {
+        logResultFailed();
+        return res.status(404).send(`That bai: asset bat buoc phai co name`);
       }
 
       try {
@@ -179,50 +184,15 @@ init().then(() => {
         if (`${result}` !== '')
           logResult(prettyJSONString(result.toString()));
 
-        return res.send(JSON.stringify({
-          msg: `Thanh cong: ma asset la ${JSON.parse(result).ID}`,
-          ID: JSON.parse(result).ID,
-        }));
+        return res.json({
+          msg: `Thanh cong: ma asset la ${JSON.parse(result).id}`,
+          id: JSON.parse(result).id,
+        });
       }
       catch
       {
-        return res.status(404).send(`That bai: ID '${req.body.ID}' da ton tai`);
+        return res.status(404).send(`That bai: asset id '${req.body.id}' da ton tai`);
       }
-    } finally {
-      gateway.disconnect();
-    }
-  });
-
-  app.post('/api/delete', async (req, res) => {
-    const gateway = new Gateway();
-    try {
-      await gateway.connect(ccp, {
-        wallet,
-        identity: org1UserId,
-        discovery: { enabled: true, asLocalhost: true }
-      });
-
-      const network = await gateway.getNetwork(channelName);
-      const contract = network.getContract(chaincodeName, contractName);
-
-      console.log('\n--> Submit Transaction: RemoveAsset');
-      if (!req.body.ID) {
-        logResultFailed();
-        return res.status(404).send(`That bai: asset bat buoc phai co ID`);
-      }
-
-      try {
-        var result = await contract.submitTransaction('DeleteAsset', req.body.ID);
-        logResultCommited();
-        logResult(result);
-
-        return res.send(`Thanh cong: asset '${req.body.ID}' da duoc xoa khoi ledger`);
-      }
-      catch {
-        logResultFailed();
-        res.status(404).send(`Xoa that bai: asset '${req.body.ID}' khong ton tai`);
-      }
-
     } finally {
       gateway.disconnect();
     }
@@ -242,25 +212,65 @@ init().then(() => {
 
       console.log('\n--> Submit Transaction: UpdateAsset');
 
-      if (!req.body.ID) {
+      if (!req.body.id) {
         logResultFailed();
-        return res.status(404).send(`That bai: asset bat buoc phai co ID`);
+        return res.status(404).send(`That bai: asset bat buoc phai co id`);
       }
 
-      if (!req.body.Owner) {
+      if (!req.body.owner) {
         logResultFailed();
-        return res.status(404).send(`That bai: asset bat buoc phai co Owner`);
+        return res.status(404).send(`That bai: asset bat buoc phai co owner`);
+      }
+
+      if (!req.body.name) {
+        logResultFailed();
+        return res.status(404).send(`That bai: asset bat buoc phai co name`);
       }
 
       try {
         await contract.submitTransaction('UpdateAsset', JSON.stringify(req.body));
         logResultCommited();
 
-        return res.send(`Thanh cong: asset '${req.body.ID}' da duoc cap nhat`);
+        return res.send(`Thanh cong: asset '${req.body.id}' da duoc cap nhat`);
       }
       catch {
         logResultFailed();
-        res.status(404).send(`Cap nhat that bai: asset '${req.body.ID}' khong ton tai`);
+        res.status(404).send(`Cap nhat that bai: asset '${req.body.id}' khong ton tai`);
+      }
+
+    } finally {
+      gateway.disconnect();
+    }
+  });
+
+  // body: { id }
+  app.post('/api/delete', async (req, res) => {
+    const gateway = new Gateway();
+    try {
+      await gateway.connect(ccp, {
+        wallet,
+        identity: org1UserId,
+        discovery: { enabled: true, asLocalhost: true }
+      });
+
+      const network = await gateway.getNetwork(channelName);
+      const contract = network.getContract(chaincodeName, contractName);
+
+      console.log('\n--> Submit Transaction: RemoveAsset');
+      if (!req.body.id) {
+        logResultFailed();
+        return res.status(404).send(`That bai: asset bat buoc phai co id`);
+      }
+
+      try {
+        const result = await contract.submitTransaction('DeleteAsset', req.body.id);
+        logResultCommited();
+
+        return res.send(`Thanh cong: asset '${req.body.id}' da duoc xoa khoi ledger\n txId: ${JSON.parse(result).txId}`);
+      }
+      catch {
+        logResultFailed();
+        res.status(404).send(`Xoa that bai: asset '${req.body.id}' khong ton tai`);
       }
 
     } finally {
@@ -269,7 +279,7 @@ init().then(() => {
   });
 
   //Cho phep chuyen chu so huu cua asset 
-  // input: { ID, newOwner }
+  // body: { id, newOwner }
   app.post('/api/transfer', async (req, res) => {
     const gateway = new Gateway();
     try {
@@ -284,9 +294,9 @@ init().then(() => {
 
       console.log('\n--> Submit Transaction: TransferAsset');
 
-      if (!req.body.ID) {
+      if (!req.body.id) {
         logResultFailed();
-        return res.status(404).send(`That bai: thieu ID cua asset`);
+        return res.status(404).send(`That bai: thieu id cua asset`);
       }
 
       if (!req.body.newOwner) {
@@ -295,17 +305,17 @@ init().then(() => {
       }
 
       try {
-        const result = await contract.submitTransaction('ReadAsset', req.body.ID);
+        const result = await contract.submitTransaction('ReadAsset', req.body.id);
         const oldAsset = JSON.parse(result);
 
-        await contract.submitTransaction('TransferAsset', req.body.ID, req.body.newOwner);
+        await contract.submitTransaction('TransferAsset', req.body.id, req.body.newOwner);
         logResultCommited();
 
-        return res.send(`Thanh cong: da doi chu asset '${req.body.ID}' tu '${oldAsset.Owner}' sang '${req.body.newOwner}'`);
+        return res.send(`Thanh cong: da doi chu asset '${req.body.id}' tu '${oldAsset.Owner}' sang '${req.body.newOwner}'`);
       }
       catch {
         logResultFailed();
-        res.status(404).send(`Cap nhat that bai: asset '${req.body.ID}' khong ton tai`);
+        res.status(404).send(`Cap nhat that bai: asset '${req.body.id}' khong ton tai`);
       }
 
     } finally {
@@ -315,7 +325,7 @@ init().then(() => {
 
   //Cho phep nguoi dung goi transaction cua smart contract mong muon 
   // input: {
-  //   user: { org, ID }
+  //   user: { org, id }
   //   transaction: {channelName, chaincodeName, contractName, transactionName, args: [...]} }
   app.post('/api/call', async (req, res) => {
     let customCCP;
@@ -339,7 +349,7 @@ init().then(() => {
     try {
       await gateway.connect(customCCP, {
         wallet: customWallet,
-        identity: req.body.user.ID,
+        identity: req.body.user.id,
         discovery: { enabled: true, asLocalhost: true }
       });
 
@@ -363,8 +373,8 @@ init().then(() => {
     }
   });
 
-
-  app.get('/api/history/:id', async (req, res) => {
+  //Xem lich su giao dich cua asset
+  app.get('/api/txHistory/:id', async (req, res) => {
     const gateway = new Gateway();
     try {
       await gateway.connect(ccp, {
@@ -385,6 +395,35 @@ init().then(() => {
       catch {
         logResultFailed();
         return res.status(404).send(`Asset voi id ${req.params.id} khong ton tai`)
+      }
+
+    } finally {
+      gateway.disconnect();
+    }
+  })
+
+  //Xem thong tin giao dich dua tren ma giao dich (txId)
+  app.get('/api/tx/:txId', async (req, res) => {
+    const gateway = new Gateway();
+    try {
+      await gateway.connect(ccp, {
+        wallet,
+        identity: org1UserId,
+        discovery: { enabled: true, asLocalhost: true }
+      });
+
+      const network = await gateway.getNetwork(channelName);
+      const contract = network.getContract(chaincodeName, "AssetHistoryContract");
+
+      try {
+        console.log('\n--> Evaluate Transaction: GetHistory, function returns transaction info with a given txId');
+        const result = await contract.evaluateTransaction('GetTransactionInfoByTxId', req.params.txId);
+        logResultcompleted();
+        return res.json(JSON.parse(result.toString()));
+      }
+      catch {
+        logResultFailed();
+        return res.status(404).send(`transsaction voi id ${req.params.txId} khong ton tai`)
       }
 
     } finally {
