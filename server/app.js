@@ -15,14 +15,18 @@ const { buildCAClient, registerAndEnrollUser, enrollAdmin } = require('./CAUtil.
 const { buildCCPOrg1, buildCCPOrg2, buildWallet } = require('./AppUtil.js');
 
 const channelName = 'mychannel';
-const chaincodeName = 'basic';
+const chaincodeName = 'basic9999999';
 const contractName = "AssetTransferContract";
 
-const mspOrg1 = 'Org1MSP';
-const walletPath = path.join(__dirname, 'wallet');
+let msp = 'Org1MSP';
+let walletPath = path.join(__dirname, 'wallet');
+let org1UserId = 'David';
+let affiliation = 'org1.department1';
+
 const walletPathOrg2 = path.join(__dirname, 'walletOrg2');
-const org1UserId = 'appUser';
-const org2UserId = 'appUserOrg2';
+const org2UserId = 'Max';
+let affiliationOrg2 = 'org2.department1';
+const mspOrg2 = "Org2MSP";
 
 let ccp = null;
 let wallet = null;
@@ -30,6 +34,7 @@ let caClient = null;
 
 let walletOrg2 = null;
 let ccpOrg2 = null;
+let caClientOrg2 = null;
 
 function prettyJSONString(inputString) {
   return JSON.stringify(JSON.parse(inputString), null, 2);
@@ -50,14 +55,14 @@ async function init() {
     // setup wallet để  giữ credentials của các user
     wallet = await buildWallet(Wallets, walletPath);
 
-    await enrollAdmin(caClient, wallet, mspOrg1);
-    await registerAndEnrollUser(caClient, wallet, mspOrg1, org1UserId, 'org1.department1');
+    await enrollAdmin(caClient, wallet, msp);
+    await registerAndEnrollUser(caClient, wallet, msp, org1UserId, affiliation);
 
     walletOrg2 = await buildWallet(Wallets, walletPathOrg2);
     ccpOrg2 = buildCCPOrg2();
-    let caClientCCP2 = buildCAClient(FabricCAServices, ccpOrg2, 'ca.org2.example.com');
-    await enrollAdmin(caClientCCP2, walletOrg2, "mspOrg2");
-    await registerAndEnrollUser(caClientCCP2, walletOrg2, "Org2MSP", org2UserId, 'org2.department1');
+    caClientOrg2 = buildCAClient(FabricCAServices, ccpOrg2, 'ca.org2.example.com');
+    await enrollAdmin(caClientOrg2, walletOrg2, mspOrg2);
+    await registerAndEnrollUser(caClientOrg2, walletOrg2, mspOrg2, org2UserId, affiliationOrg2);
 
   } catch (error) {
     console.error(`******** FAILED to run the application: ${error}`);
@@ -116,8 +121,8 @@ init().then(() => {
       console.log('\n--> Evaluate Transaction: GetAllAssets, function returns all the current assets on the ledger');
       let result = await contract.evaluateTransaction('GetAllAssets');
       logResultcompleted();
-
-      res.json(JSON.parse(result.toString()));
+      let sortedResult = JSON.parse(result.toString()).sort((a, b) =>  parseInt(a.id.match(/asset(\d+)/)[1]) - parseInt(b.id.match(/asset(\d+)/)[1]));
+      res.json(sortedResult);
     } finally {
       gateway.disconnect();
     }
@@ -167,11 +172,6 @@ init().then(() => {
       // Giao dich se duoc dua den cho orderer de dua vao so cai cua kenh  
       console.log('\n--> Submit Transaction: CreateAsset');
 
-      if (!req.body.owner) {
-        logResultFailed();
-        return res.status(404).send(`That bai: asset bat buoc phai co owner`);
-      }
-
       if (!req.body.name) {
         logResultFailed();
         return res.status(404).send(`That bai: asset bat buoc phai co name`);
@@ -217,11 +217,6 @@ init().then(() => {
         return res.status(404).send(`That bai: asset bat buoc phai co id`);
       }
 
-      if (!req.body.owner) {
-        logResultFailed();
-        return res.status(404).send(`That bai: asset bat buoc phai co owner`);
-      }
-
       if (!req.body.name) {
         logResultFailed();
         return res.status(404).send(`That bai: asset bat buoc phai co name`);
@@ -235,7 +230,7 @@ init().then(() => {
       }
       catch {
         logResultFailed();
-        res.status(404).send(`Cap nhat that bai: asset '${req.body.id}' khong ton tai`);
+        res.status(404).send(`Cap nhat that bai: asset '${req.body.id}' khong ton tai hoac ban khong phai la chu so huu asset`);
       }
 
     } finally {
@@ -279,7 +274,7 @@ init().then(() => {
   });
 
   //Cho phep chuyen chu so huu cua asset 
-  // body: { id, newOwner }
+  // body: { id, newOwnerId }
   app.post('/api/transfer', async (req, res) => {
     const gateway = new Gateway();
     try {
@@ -299,23 +294,24 @@ init().then(() => {
         return res.status(404).send(`That bai: thieu id cua asset`);
       }
 
-      if (!req.body.newOwner) {
+      if (!req.body.newOwnerId) {
         logResultFailed();
         return res.status(404).send(`That bai: thieu newOwner (chu so huu moi cua asset)`);
       }
 
       try {
-        const result = await contract.submitTransaction('ReadAsset', req.body.id);
+        const result = await contract.evaluateTransaction('ReadAsset', req.body.id);
         const oldAsset = JSON.parse(result);
 
-        await contract.submitTransaction('TransferAsset', req.body.id, req.body.newOwner);
+        await contract.submitTransaction('TransferAsset', req.body.id, req.body.newOwnerId);
         logResultCommited();
 
-        return res.send(`Thanh cong: da doi chu asset '${req.body.id}' tu '${oldAsset.Owner}' sang '${req.body.newOwner}'`);
+        let newOwnerName = req.body.newOwnerId.match(/CN=(.*)::/)[1];
+        return res.send(`Thanh cong: da doi chu asset '${req.body.id}' tu '${oldAsset.owner}' sang '${newOwnerName}'`);
       }
       catch {
         logResultFailed();
-        res.status(404).send(`Cap nhat that bai: asset '${req.body.id}' khong ton tai`);
+        res.status(404).send(`Cap nhat that bai: asset '${req.body.id}' khong ton tai hoac ban khong phai la chu so huu asset`);
       }
 
     } finally {
@@ -325,31 +321,39 @@ init().then(() => {
 
   //Cho phep nguoi dung goi transaction cua smart contract mong muon 
   // input: {
-  //   user: { org, id }
+  //   user: { org, department, name, affiliation}
   //   transaction: {channelName, chaincodeName, contractName, transactionName, args: [...]} }
   app.post('/api/call', async (req, res) => {
     let customCCP;
     let customWallet;
+    let customCA;
+    let customMSP;
 
     if (req.body.user.org == "org1") {
+      customCA = caClient;
       customCCP = ccp;
       customWallet = wallet;
+      customMSP = msp;
     }
 
     else if (req.body.user.org == "org2") {
+      customCA = caClientOrg2;
       customCCP = ccpOrg2;
       customWallet = walletOrg2;
+      customMSP = mspOrg2;
     }
 
     else {
       return res.status(404).send(`to chuc ${req.body.user.org} khong ton tai`);
     }
 
+    await registerAndEnrollUser(customCA, customWallet, customMSP, req.body.user.name, req.body.user.affiliation);
+
     const gateway = new Gateway();
     try {
       await gateway.connect(customCCP, {
         wallet: customWallet,
-        identity: req.body.user.id,
+        identity: req.body.user.name,
         discovery: { enabled: true, asLocalhost: true }
       });
 
@@ -357,12 +361,19 @@ init().then(() => {
       const network = await gateway.getNetwork(channelName);
       const contract = network.getContract(chaincodeName, contractName);
 
+      console.log(`\n--> From org '${req.body.user.org}', user '${req.body.user.name}', affliation: '${req.body.user.affiliation}'`);
       console.log(`\n--> From channel '${channelName}', contract '${contractName}', Call Transaction: ${transactionName}`);
       try {
         const formatedArgs = args.map(arg => (typeof arg === 'object') ? JSON.stringify(arg) : arg);
         const result = await contract.submitTransaction(transactionName, ...formatedArgs);
         logResultcompleted();
-        return res.send(result.toString());
+
+        if (result.toString() != '') {
+          logResult(prettyJSONString(result.toString()));
+          return res.json(JSON.parse(result.toString()));
+        }
+        else
+          return res.send("Goi thanh cong");
       }
       catch {
         logResultFailed();

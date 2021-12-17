@@ -16,7 +16,6 @@ class AssetTransferContext extends Context {
     constructor() {
         super();
         this.prefix = "asset";
-        this.IDCount = 1;
     }
 
 }
@@ -24,6 +23,7 @@ class AssetTransferContext extends Context {
 class AssetTransfer extends Contract {
     constructor() {
         super('AssetTransferContract');
+        this.IDCount = 1;
     }
 
     createContext() {
@@ -31,16 +31,20 @@ class AssetTransfer extends Contract {
     }
 
     async InitLedger(ctx) {
+        const ownerId = ctx.clientIdentity.getID();
+
         const assets = [
             {
                 name: 'Đàn Ukulele Soprano',
-                owner: 'David',
+                owner: ctx.clientIdentity.getID().match(/CN=(.*)::/)[1],
+                ownerId,
                 price: '549000',
                 color: 'Nâu'
             },
             {
                 name: 'Máy phát điện biogas',
                 owner: 'Nguyễn Văn An',
+                ownerId: "x509::/OU=org1/OU=client/OU=department1/CN=Nguyễn Văn An::/C=US/ST=North Carolina/L=Durham/O=org1.example.com/CN=ca.org1.example.com",
                 price: '200000000',
                 countryOfOrigin: 'Việt Nam',
                 efficiency: '10kW-500kW (12 kVA-625 kVA)',
@@ -49,6 +53,7 @@ class AssetTransfer extends Contract {
             {
                 name: 'Sofa Da OEM',
                 owner: 'See Jun',
+                ownerId: "x509::/OU=org2/OU=client/OU=department1/CN=See Jun::/C=UK/ST=Hampshire/L=Hursley/O=org2.example.com/CN=ca.org2.example.com",
                 price: '549000',
                 brand: 'OEM',
                 materials: 'Gỗ  Beech tự nhiên, Da bò Ý, Sơn Sherwin',
@@ -57,6 +62,7 @@ class AssetTransfer extends Contract {
             {
                 name: 'iPhone 13',
                 owner: 'Max',
+                ownerId: "x509::/OU=org1/OU=client/OU=department1/CN=Max::/C=US/ST=North Carolina/L=Durham/O=org1.example.com/CN=ca.org1.example.com",
                 price: '22890000',
                 brand: 'Apple',
                 color: 'Starlight',
@@ -64,7 +70,8 @@ class AssetTransfer extends Contract {
             },
             {
                 name: 'Đàn Piano điện Yamaha CVP-705',
-                owner: 'David',
+                owner: ctx.clientIdentity.getID().match(/CN=(.*)::/)[1],
+                ownerId,
                 price: '102000000',
                 model: 'Yamaha CVP-705 - CVP-705PE',
                 brand: 'Yamaha',
@@ -75,6 +82,7 @@ class AssetTransfer extends Contract {
             {
                 name: 'Biệt thự Galleria',
                 owner: 'Nguyễn Văn A',
+                ownerId: "x509::/OU=org2/OU=client/OU=department1/CN=Nguyễn Văn A:/C=UK/ST=Hampshire/L=Hursley/O=org2.example.com/CN=ca.org2.example.com",
                 price: '42000000000',
                 desciption: 'Kết cấu 5 tầng gồm 4 phòng ngủ và 5 toilet, cửa hướng Đông Nam thoáng mát, đây là một khu phố nhà ở kết hợp thương mại theo mô hình sang trọng, an ninh và văn minh. Nơi đây, bạn sẽ có cảm giác như lạc vào những con phố miền Nam Châu Âu với những cửa hiệu kén khách.',
                 area: '342.7',
@@ -83,7 +91,7 @@ class AssetTransfer extends Contract {
             },
         ];
 
-        assets.forEach(a => a.id = ctx.prefix + ctx.IDCount++);
+        assets.forEach(a => a.id = ctx.prefix + this.IDCount++);
 
         for (const asset of assets) {
             // example of how to write to world state deterministically
@@ -108,7 +116,7 @@ class AssetTransfer extends Contract {
         }
         else {
             while (true) {
-                const newId = ctx.prefix + ctx.IDCount++;
+                const newId = ctx.prefix + this.IDCount++;
                 const exists = await this.AssetExists(ctx, newId);
 
                 if (exists)
@@ -119,6 +127,8 @@ class AssetTransfer extends Contract {
             }
         }
 
+        asset.owner = ctx.clientIdentity.getID().match(/CN=(.*)::/)[1];
+        asset.ownerId = ctx.clientIdentity.getID();
         await this._PutTransactionInfo(ctx);
         await ctx.stub.putState(asset.id, Buffer.from(stringify(sortKeysRecursive(asset))));
         return JSON.stringify(asset);
@@ -139,9 +149,20 @@ class AssetTransfer extends Contract {
             throw new Error(`The asset ${asset.id} does not exist`);
         }
 
+        const oldAsset = JSON.parse(await ctx.stub.getState(asset.id));
+
+        let clientName = ctx.clientIdentity.getID().match(/CN=(.*)::/)[1];
+        const clientId = ctx.clientIdentity.getID();
+        if (oldAsset.ownerId != clientId) {
+            throw new Error(`${clientName} is not the owner of this asset\n owner id: ${clientId}`);
+        }
+
+        asset.owner = oldAsset.owner; 
+        asset.ownerId = oldAsset.ownerId; 
+
         // we insert data in alphabetic order using 'json-stringify-deterministic' and 'sort-keys-recursive'
         await this._PutTransactionInfo(ctx);
-        return ctx.stub.putState(asset.id, Buffer.from(stringify(sortKeysRecursive(asset))));
+        await ctx.stub.putState(asset.id, Buffer.from(stringify(sortKeysRecursive(asset))));
     }
 
     async DeleteAsset(ctx, id) {
@@ -149,6 +170,15 @@ class AssetTransfer extends Contract {
         if (!exists) {
             throw new Error(`The asset ${id} does not exist`);
         }
+
+        const oldAsset = JSON.parse(await ctx.stub.getState(id));
+
+        let clientName = ctx.clientIdentity.getID().match(/CN=(.*)::/)[1];
+        const clientId = ctx.clientIdentity.getID();
+        if (oldAsset.ownerId != clientId) {
+            throw new Error(`${clientName} is not the owner of this asset\n owner id: ${clientId}`);
+        }
+
         await this._PutTransactionInfo(ctx, true);
         let result = JSON.stringify({ txId: ctx.stub.getTxID() });
         await ctx.stub.deleteState(id);
@@ -160,10 +190,17 @@ class AssetTransfer extends Contract {
         return assetJSON && assetJSON.length > 0;
     }
 
-    async TransferAsset(ctx, id, newOwner) {
-        const assetString = await this.ReadAsset(ctx, id);
-        const asset = JSON.parse(assetString);
-        asset.Owner = newOwner;
+    async TransferAsset(ctx, id, newOwnerId) {
+        const asset = JSON.parse(await ctx.stub.getState(id));
+
+        let clientName = ctx.clientIdentity.getID().match(/CN=(.*)::/)[1];
+        const clientId = ctx.clientIdentity.getID();
+        if (asset.ownerId != clientId) {
+            throw new Error(`${clientName} is not the owner of this asset\n owner id: ${clientId}`);
+        }
+
+        asset.owner = newOwnerId.match(/CN=(.*)::/)[1];
+        asset.ownerId = newOwnerId;
         await this._PutTransactionInfo(ctx);
         return ctx.stub.putState(id, Buffer.from(stringify(sortKeysRecursive(asset))));
     }

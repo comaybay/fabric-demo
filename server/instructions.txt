@@ -1,3 +1,4 @@
+
 --Khởi tạo asset mẫu:
 curl http://localhost:1234/api/init; echo
 
@@ -10,7 +11,7 @@ curl http://localhost:1234/api/all; echo
 --Xóa asset
 \
 curl -X POST -H "Content-Type: application/json" \
---data '{ "id": "asset4" }' \
+--data '{ "id": "asset1" }' \
 http://localhost:1234/api/delete; echo
 
 --Thêm asset
@@ -18,7 +19,6 @@ http://localhost:1234/api/delete; echo
 curl -X POST -H "Content-Type: application/json" \
 --data '{
                 "name": "Đàn Guitar Acoustic Rosen G11",
-                "owner": "Nguyễn Văn B",
                 "price": "2000000",
                 "color": "Đen",
                 "material": "Sơ Mờ, gỗ Nato"
@@ -31,7 +31,6 @@ curl -X POST -H "Content-Type: application/json" \
 --data '{
                 "id": "asset7",
                 "name": "Đàn Guitar Acoustic Rosen G11",
-                "owner": "Nguyễn Văn B",
                 "price": "3200000",
                 "color": "Đỏ",
                 "material": "Sơ Mờ, đầu đàn & cần: gỗ Nato, mặt đàn: gỗ Vân Sam"
@@ -42,13 +41,13 @@ http://localhost:1234/api/update; echo
 \
 curl -X POST -H "Content-Type: application/json" \
 --data '{
-                "id": "asset1",
-                "newOwner": "Nguyễn Văn B"
+                "id": "asset13",
+                "newOwnerId": "x509::/OU=org2/OU=client/OU=department1/CN=See Jun::/C=UK/ST=Hampshire/L=Hursley/O=org2.example.com/CN=ca.org2.example.com"
         }' \
 http://localhost:1234/api/transfer; echo
 
 --Xem lich su cua asset
-curl http://localhost:1234/api/txhistory/asset6; echo
+curl http://localhost:1234/api/txhistory/asset7; echo
 
 --xem transaction 
 curl http://localhost:1234/api/tx/txId; echo
@@ -56,7 +55,11 @@ curl http://localhost:1234/api/tx/txId; echo
 --Goi transaction mong muon
 \
 curl -X POST -H "Content-Type: application/json" \
---data '{ "user": {"org": "org2", "id": "appUserOrg2" },
+--data '{ "user": {
+            "org": "org2",
+            "name": "Kris",
+            "affiliation": "org2.department1"
+        },
           "transaction": { 
             "channelName": "mychannel",
             "chaincodeName": "basic", 
@@ -66,14 +69,3 @@ curl -X POST -H "Content-Type: application/json" \
           } 
         }' \
 http://localhost:1234/api/call; echo
-
-\
-curl -X POST -H "Content-Type: application/json" \
---data '{
-                "id": "asset10",
-                "name": "Knife",
-                "owner": "Kris",
-                "price": "9999999",
-                "color": "Red"
-         }' \
-http://localhost:1234/api/update; echo

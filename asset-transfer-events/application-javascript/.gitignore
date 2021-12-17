@@ -11,4 +11,5 @@ jspm_packages/
 package-lock.json
 
 wallet
+walletOrg2
 !wallet/.gitkeep
