@@ -15,7 +15,7 @@ const { buildCAClient, registerAndEnrollUser, enrollAdmin } = require('./CAUtil.
 const { buildCCPOrg1, buildCCPOrg2, buildWallet } = require('./AppUtil.js');
 
 const channelName = 'mychannel';
-const chaincodeName = 'basic9999999';
+const chaincodeName = 'basic';
 const contractName = "AssetTransferContract";
 
 let msp = 'Org1MSP';
